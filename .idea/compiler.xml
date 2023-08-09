@@ -7,7 +7,11 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="ArrayListImpl" />
+        <module name="StringBuilderImpl" />
       </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="TaskCollections" target="19" />
+    </bytecodeTargetLevel>
   </component>
 </project>
