@@ -1,4 +1,4 @@
-package org.example;
+package org.stringbuilder;
 
 import java.nio.ByteBuffer;
 import java.util.Objects;

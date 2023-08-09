@@ -1,13 +1,11 @@
-package org.example;
+package org.arraylist;
 
-import java.lang.ref.WeakReference;
 import java.util.*;
 
-public class ArListImpl<E> implements List<E> {
+public class ArrayListImpl<E> implements List<E> {
 
-  private final int DEFAULT_CAPACITY = 10;
+  private final int DEFAULT_CAPACITY = 20;
   private final Object[] EMPTY_LIST = {};
-  //  private WeakReference<Object[]> weakReference;
   private E[] list;
   private int capacity;
   private int count;
@@ -16,15 +14,11 @@ public class ArListImpl<E> implements List<E> {
     count = 0;
   }
 
-  public ArListImpl() {
-//    weakReference = new WeakReference<>(new Object[capacity = DEFAULT_CAPACITY]);
-//    list = (E[]) weakReference.get();
+  public ArrayListImpl() {
     list = (E[]) new Object[capacity = DEFAULT_CAPACITY];
   }
 
-  public ArListImpl(int initialCapacity) {
-//    weakReference = new WeakReference<>(new Object[capacity = initialCapacity]);
-//    list = (E[]) weakReference.get();
+  public ArrayListImpl(int initialCapacity) {
     list = (E[]) new Object[capacity = initialCapacity];
   }
 
@@ -75,14 +69,42 @@ public class ArListImpl<E> implements List<E> {
   }
 
   private void copyList() {
-    E[] oldList1 =  Arrays.copyOfRange(list, 0, capacity / 2);
-    E[] oldList2 =  Arrays.copyOfRange(list, capacity / 2, capacity);
-
-
-//    list = (E[]) new WeakReference<>(new Object[capacity += 10]).get();
+    E[][] arrays = createOldArray(getCountOldArray(count));
+    int index = 0;
     list = (E[]) new Object[capacity += 10];
-    System.arraycopy(oldList1, 0, list, 0, count / 2);
-    System.arraycopy(oldList2, 0, list, count / 2, count/ 2);
+    for (E[] array : arrays) {
+      System.arraycopy(array, 0, list, index, array.length);
+      index += array.length;
+    }
+  }
+
+
+  private E[][] createOldArray(int countOldList) {
+    int capacityArrays;
+    int fromIndex = 0;
+    E[][] arrays = (E[][]) new Object[countOldList][capacityArrays = count/countOldList];
+    for (int i = 0; i < countOldList; i++) {
+      arrays[i] = Arrays.copyOfRange(list, fromIndex, capacityArrays < size() ? capacityArrays : size());
+      fromIndex = capacityArrays - 1;
+      capacityArrays += arrays[i].length;
+    }
+    return arrays;
+  }
+
+  private int getCapacityArrays(int countOldList){
+    int capacityArrays = count;
+    int countArray = 1;
+    while(capacityArrays % countOldList != 0){
+      capacityArrays = capacityArrays / countOldList;
+      countArray++;
+    }
+    return capacityArrays;
+  }
+
+  private int getCountOldArray(int count) {
+    return Double.valueOf(Math.floor(
+        Math.log(count % 2 == 0 ? count : ++count)))
+      .intValue();
   }
 
   private boolean isFill() {
@@ -106,8 +128,6 @@ public class ArListImpl<E> implements List<E> {
 
   @Override
   public void clear() {
-//    weakReference = new WeakReference<>(EMPTY_LIST);
-//    list = (E[]) weakReference.get();
     list = (E[]) EMPTY_LIST;
     capacity = 0;
     count = 0;
@@ -199,5 +219,20 @@ public class ArListImpl<E> implements List<E> {
       builder.deleteCharAt(1).append("]");
     }
     return builder.toString();
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    ArrayListImpl<?> arrayList = (ArrayListImpl<?>) o;
+    return capacity == arrayList.capacity && count == arrayList.count && Arrays.equals(list, arrayList.list);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = Objects.hash(capacity, count);
+    result = 31 * result + Arrays.hashCode(list);
+    return result;
   }
 }
