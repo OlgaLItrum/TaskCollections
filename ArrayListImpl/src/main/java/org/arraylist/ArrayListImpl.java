@@ -21,11 +21,12 @@ public class ArrayListImpl<E> implements List<E> {
   public ArrayListImpl(int initialCapacity) {
     list = (E[]) new Object[capacity = initialCapacity];
   }
-  
-  public ArrayListImpl(E[] array){
+
+  public ArrayListImpl(E[] array) {
     this();
     checkFillSizeArray(count + array.length);
     invokeArrayCopy(array, 0, list, 0, array.length);
+    count += array.length;
   }
 
   @Override
@@ -139,6 +140,7 @@ public class ArrayListImpl<E> implements List<E> {
     if (c.isEmpty())
       return false;
     else {
+      checkIndexOfBounds(index);
       checkFillSizeArray(count + c.size());
       E[] subList = Arrays.copyOfRange(list, index, size());
       invokeArrayCopy((E[]) c.toArray(), 0, list, count - subList.length, c.size());
@@ -201,10 +203,11 @@ public class ArrayListImpl<E> implements List<E> {
     checkIndexOfBounds(index);
     checkFillSizeArray(count);
 
+    E element = list[index];
     invokeArrayCopy(list, index + 1, list, index, size() - index);
     list[count] = null;
     count--;
-    return list[index];
+    return element;
   }
 
   private void invokeArrayCopy(E[] src, int srcPoc, E[] dest, int destPoc, int length) {
@@ -236,19 +239,20 @@ public class ArrayListImpl<E> implements List<E> {
   //TODO
   @Override
   public ListIterator<E> listIterator() {
-    return getListIterator();
+    return getListIterator(count);
   }
 
   //TODO
   @Override
   public ListIterator<E> listIterator(int index) {
-    return getListIterator();
+    isIndexOutBounds(index);
+    return getListIterator(index);
   }
 
   //TODO
-  private ListIterator<E> getListIterator() {
+  private ListIterator<E> getListIterator(int startIndex) {
     return new ListIterator<>() {
-      private int count = 0;
+      private int count = startIndex;
 
       @Override
       public boolean hasNext() {
@@ -287,27 +291,32 @@ public class ArrayListImpl<E> implements List<E> {
 
       @Override
       public void set(E e) {
-        set(e);
+        ArrayListImpl.this.set(count, e);
       }
 
       @Override
       public void add(E e) {
-        add(e);
+        ArrayListImpl.this.add(count, e);
       }
     };
   }
 
-  //TODO
   @Override
-  public List subList(int fromIndex, int toIndex) {
-    return null;
+  public List<E> subList(int fromIndex, int toIndex) {
+    checkIndexOfBounds(fromIndex);
+    checkIndexOfBounds(toIndex);
+    return new ArrayListImpl<>(Arrays.copyOfRange(list, fromIndex, toIndex));
   }
 
-  //TODO
   @Override
   public boolean retainAll(Collection c) {
     int action = 0;
-    for (int i = 0; i < size(); i++) {
+    Integer index = null;
+    for (int i = 0; i < size() + 1; i++) {
+      if(index != null){
+        i = index;
+        index = null;
+      }
       int count = 0;
       for (Object item : c) {
         if (!item.equals(list[i])) {
@@ -318,12 +327,13 @@ public class ArrayListImpl<E> implements List<E> {
         action++;
         checkFillSizeArray(count);
         remove(i);
+        index = i;
       }
+
     }
     return action > 0;
   }
 
-  //TODO
   @Override
   public boolean removeAll(Collection c) {
     if (c.isEmpty())
@@ -369,11 +379,17 @@ public class ArrayListImpl<E> implements List<E> {
       builder.append("]");
     } else {
       for (int index = 0; index < count; index++) {
-        builder.append(",").append(list[index]);
+        builder.append(", ").append(list[index]);
       }
       builder.deleteCharAt(1).append("]");
     }
     return builder.toString();
+  }
+
+  public void trimToSize(){
+    if(count < list.length){
+      list = isEmpty() ? (E[]) EMPTY_LIST : Arrays.copyOf(list, count);
+    }
   }
 
   @Override
