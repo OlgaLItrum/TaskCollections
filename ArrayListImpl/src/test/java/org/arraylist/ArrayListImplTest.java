@@ -1,6 +1,5 @@
 package org.arraylist;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,11 +64,6 @@ public class ArrayListImplTest {
   public void contains_ReturnsFalseIfValueIsNotPresent() {
     int value = initialArraySize;
     assertFalse(list.contains(value));
-  }
-
-  @Test
-  public void toArray() {
-    fail();
   }
 
   @Test
@@ -201,7 +195,7 @@ public class ArrayListImplTest {
 
   @Test
   public void retainAll_ReturnsFalseIfCollectionIsNotEmpty() {
-    List<Integer> expectedList = List.of(1,2,3);
+    List<Integer> expectedList = List.of(1, 2, 3);
     assertTrue(list.retainAll(expectedList));
     list.trimToSize();
     assertTrue(expectedList.containsAll(list));
@@ -229,8 +223,4 @@ public class ArrayListImplTest {
     assertFalse(list.containsAll(isContainList));
   }
 
-  @Test
-  public void testToArray() {
-    fail();
-  }
 }
