@@ -1,3 +1,8 @@
 ArrayListImpl/target
 
 StringBuilderImpl/target
+
+.idea/
+
+ArrayListImpl/src/main/java/org/arraylist/Main.java
+StringBuilderImpl/src/main/java/org/stringbuilder/Main.java
