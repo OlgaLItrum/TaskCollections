@@ -1,6 +1,5 @@
 package org.stringbuilder;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -43,15 +42,22 @@ public class StringBuilderImpl implements StringBuilderInterface {
   }
 
   @Override
-  public StringBuilderImpl append(CharSequence csq) throws IOException {
-    if (!csq.isEmpty())
-      append(Stream.of(csq).collect(Collectors.joining()));
+  public StringBuilderImpl append(CharSequence csq) {
+    if (!csq.isEmpty()) {
+      append(csq.toString());
+      addChanges();
+    }
     return this;
   }
 
   @Override
-  public Appendable append(CharSequence csq, int start, int end) throws IOException {
-    return null;
+  public StringBuilderImpl append(CharSequence csq, int start, int end) {
+    if (!csq.isEmpty()) {
+      CharSequence charSub = csq.subSequence(start, end);
+      append(charSub);
+      addChanges();
+    }
+    return this;
   }
 
   public StringBuilderImpl append(char character) {
@@ -59,10 +65,8 @@ public class StringBuilderImpl implements StringBuilderInterface {
       createNewBytes(
         getNeededCapacity(Character.toString(character)));
     }
-    if (isNotNull(character)) {
-      bytes[size] = Byte.parseByte(String.valueOf((int) character));
-      size++;
-    }
+    bytes[size] = Byte.parseByte(String.valueOf((int) character));
+    size++;
     addChanges();
     return this;
   }
@@ -94,8 +98,8 @@ public class StringBuilderImpl implements StringBuilderInterface {
       }
       bytes[size] = -1;
       size++;
+      addChanges();
     }
-    addChanges();
     return this;
   }
 
@@ -118,8 +122,8 @@ public class StringBuilderImpl implements StringBuilderInterface {
       }
       bytes[size] = -2;
       size++;
+      addChanges();
     }
-    addChanges();
     return this;
   }
 
@@ -135,13 +139,12 @@ public class StringBuilderImpl implements StringBuilderInterface {
       }
       addChanges();
     }
-    addChanges();
     return this;
   }
 
   @Override
   public void undo() {
-    if(changes.isEmpty())
+    if (changes.isEmpty())
       throw new NoSuchElementException("no element to undo");
     if (!Arrays.equals(changes.getFirst(), changes.getLast())) {
       changes.removeLast();
@@ -155,21 +158,25 @@ public class StringBuilderImpl implements StringBuilderInterface {
 
   @Override
   public int capacity() {
-    return 0;
+    return capacity;
   }
 
   @Override
   public void trimToSize() {
-
+    capacity = size;
+    bytes = Arrays.copyOf(bytes, size);
   }
 
   @Override
   public void setLength(int newLength) {
-
+    size = newLength;
   }
 
   @Override
   public int codePointAt(int index) {
+    if (index > bytes.length || index < 0) {
+      throw new IndexOutOfBoundsException();
+    }
     return 0;
   }
 
@@ -210,17 +217,61 @@ public class StringBuilderImpl implements StringBuilderInterface {
 
   @Override
   public StringBuilderInterface append(char[] str) {
-    return null;
+    if (isFill() || capacity - size < str.length) {
+      createNewBytes(
+        getNeededCapacity(str.length));
+    }
+    if (isNotNull(str.length > 0)) {
+      for (char value : str) {
+        bytes[size] = (byte) value;
+        size++;
+      }
+      addChanges();
+    }
+    return this;
   }
 
   @Override
   public StringBuilderInterface append(char[] str, int offset, int len) {
-    return null;
+    if(str.length > 0) {
+      if (isFill() || capacity - size < str.length) {
+        createNewBytes(
+          getNeededCapacity(str.length));
+      }
+      for(int index = offset; index < len; index++){
+        bytes[size] = (byte) str[index];
+        size++;
+      }
+      addChanges();
+    }
+    return this;
   }
 
   @Override
   public StringBuilderInterface append(long l) {
-    return null;
+    if (isFill() || capacity - size < Long.toString(l).length()) {
+      createNewBytes(
+        getNeededCapacity(Long.toString(l)));
+    }
+    if (isNotNull(l)) {
+      byte[] numberArray = ByteBuffer.allocate(Long.BYTES).putLong(l).array();
+      bytes[size] = -3;
+      size++;
+      for (int i = 0; i < numberArray.length; i++) {
+        if (isFill()) {
+          createNewBytes(getNeededCapacity(Long.toString(l)));
+        }
+        bytes[size] = numberArray[i];
+        size++;
+      }
+      if (isFill()) {
+        createNewBytes(getNeededCapacity(Long.toString(l)));
+      }
+      bytes[size] = -3;
+      size++;
+    }
+    addChanges();
+    return this;
   }
 
   @Override
@@ -235,7 +286,8 @@ public class StringBuilderImpl implements StringBuilderInterface {
 
   @Override
   public StringBuilderInterface appendCodePoint(int codePoint) {
-    return null;
+    append((char) codePoint);
+    return this;
   }
 
   @Override
@@ -250,12 +302,19 @@ public class StringBuilderImpl implements StringBuilderInterface {
 
   @Override
   public String substring(int start) {
-    return null;
+    return "";
   }
 
   private int getNeededCapacity(String string) {
     if (capacity - size < string.length()) {
       return capacity += string.length();
+    }
+    return capacity += DEFAULT_CAPACITY_FOR_BYTES;
+  }
+
+  private int getNeededCapacity(int length) {
+    if (capacity - size < length) {
+      return capacity += length;
     }
     return capacity += DEFAULT_CAPACITY_FOR_BYTES;
   }
@@ -395,23 +454,26 @@ public class StringBuilderImpl implements StringBuilderInterface {
 
   @Override
   public StringBuilderInterface reverse() {
-    return null;
+    return this;
   }
-
 
   @Override
   public String toString() {
     StringBuffer buffer = new StringBuffer();
+
     for (int i = 0; i < size; i++) {
+
       if (bytes[i] == -1) {
         i = getNumber(buffer, i + 1, -1, 4, Integer.class.getSimpleName());
-      }
-      if (bytes[i] == -2)
+      } else if (bytes[i] == -2) {
         i = getNumber(buffer, i + 1, -2, 8, Double.class.getSimpleName());
-      else
+      } else if (bytes[i] == -3) {
+        i = getNumber(buffer, i + 1, -3, 8, Long.class.getSimpleName());
+      } else
         buffer.append((char) bytes[i]);
     }
     return buffer.toString();
+
   }
 
   @Override
@@ -427,24 +489,37 @@ public class StringBuilderImpl implements StringBuilderInterface {
   private <T> int getNumber(StringBuffer buffer, int iBytes, int numberEnd, int capacity, String name) {
     int iInt = 0;
     byte[] array = new byte[capacity];
+
     while (bytes[iBytes] != numberEnd) {
       array[iInt] = bytes[iBytes];
       iBytes++;
       iInt++;
     }
+
     if (Objects.equals(name, Double.class.getSimpleName()))
       buffer.append(ByteBuffer.wrap(array).getDouble());
+
     if (Objects.equals(name, Integer.class.getSimpleName()))
       buffer.append(ByteBuffer.wrap(array).getInt());
+
+    if (Objects.equals(name, Long.class.getSimpleName()))
+      buffer.append(ByteBuffer.wrap(array).getLong());
+
     return iBytes;
+
   }
 
   @Override
   public boolean equals(Object o) {
     if (this == o) return true;
+
     if (o == null || getClass() != o.getClass()) return false;
+
     StringBuilderImpl that = (StringBuilderImpl) o;
-    return capacity == that.capacity && size == that.size && Objects.equals(changes, that.changes) && Arrays.equals(bytes, that.bytes);
+    return capacity == that.capacity &&
+      size == that.size &&
+      Objects.equals(changes, that.changes) &&
+      Arrays.equals(bytes, that.bytes);
   }
 
   @Override
