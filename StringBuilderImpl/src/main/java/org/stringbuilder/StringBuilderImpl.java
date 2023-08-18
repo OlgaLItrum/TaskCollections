@@ -2,15 +2,15 @@ package org.stringbuilder;
 
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 public class StringBuilderImpl implements StringBuilderInterface {
   private static final int DEFAULT_CAPACITY_FOR_BYTES = 10;
   private static final byte[] EMPTY_BYTES = new byte[DEFAULT_CAPACITY_FOR_BYTES];
 
   private final ArrayDeque<byte[]> changes;
+
+  private HashMap<Integer, EntryNumber> mapNumber;
   private byte[] bytes;
 
   private int capacity;
@@ -21,6 +21,7 @@ public class StringBuilderImpl implements StringBuilderInterface {
     size = 0;
     capacity = DEFAULT_CAPACITY_FOR_BYTES;
     changes = new ArrayDeque<>();
+    mapNumber = new HashMap<>();
   }
 
   public StringBuilderImpl() {
@@ -29,11 +30,6 @@ public class StringBuilderImpl implements StringBuilderInterface {
 
   public StringBuilderImpl(int initialCapacity) {
     bytes = new byte[initialCapacity];
-  }
-
-
-  private void addChanges() {
-    changes.add(Arrays.copyOf(bytes, size));
   }
 
   public StringBuilderImpl(String string) {
@@ -83,21 +79,53 @@ public class StringBuilderImpl implements StringBuilderInterface {
     return this;
   }
 
+  enum TypeNumber {
+    Double, Long, Integer, Float
+  }
+
+  class EntryNumber {
+    Integer key = 0;
+    TypeNumber type;
+    byte[] arrayByte;
+
+    {
+      --key;
+    }
+
+    EntryNumber(TypeNumber type, byte[] arrayNumber) {
+      this.type = type;
+      this.arrayByte = arrayNumber;
+    }
+
+    static byte[] getArrayNumber(int number) {
+      return ByteBuffer.allocate(Integer.BYTES).putInt(number).array();
+    }
+
+    static byte[] getArrayNumber(double number) {
+      return ByteBuffer.allocate(Double.BYTES).putDouble(number).array();
+    }
+
+    static byte[] getArrayNumber(long number){
+      return ByteBuffer.allocate(Long.BYTES).putLong(number).array();
+    }
+
+    static byte[] getArrayNumber(float number){
+      return ByteBuffer.allocate(Float.BYTES).putFloat(number).array();
+    }
+  }
+
   public StringBuilderImpl append(int number) {
     if (isFill() || capacity >= size + 2 + Integer.toString(number).length()) {
       createNewBytes(
         getNeededCapacity(Integer.toString(number)));
     }
     if (isNotNull(number)) {
-      byte[] numberArray = ByteBuffer.allocate(Integer.BYTES).putInt(number).array();
-      bytes[size] = -1;
+      EntryNumber entryNumber = new EntryNumber(TypeNumber.Integer, EntryNumber.getArrayNumber(number));
+      mapNumber.put(entryNumber.key, entryNumber);
+
+      bytes[size] = entryNumber.key.byteValue();
       size++;
-      for (int i = 0; i < numberArray.length; i++) {
-        bytes[size] = numberArray[i];
-        size++;
-      }
-      bytes[size] = -1;
-      size++;
+
       addChanges();
     }
     return this;
@@ -109,19 +137,12 @@ public class StringBuilderImpl implements StringBuilderInterface {
         getNeededCapacity(Double.toString(number)));
     }
     if (isNotNull(number)) {
-      byte[] numberArray = ByteBuffer.allocate(Double.BYTES).putDouble(number).array();
-      bytes[size] = -2;
+      EntryNumber entryNumber = new EntryNumber(TypeNumber.Double, EntryNumber.getArrayNumber(number));
+      mapNumber.put(entryNumber.key, entryNumber);
+
+      bytes[size] = entryNumber.key.byteValue();
       size++;
-      for (int i = 0; i < numberArray.length; i++) {
-        if (isFill()) {
-          createNewBytes(
-            getNeededCapacity(Double.toString(number)));
-        }
-        bytes[size] = numberArray[i];
-        size++;
-      }
-      bytes[size] = -2;
-      size++;
+
       addChanges();
     }
     return this;
@@ -143,12 +164,106 @@ public class StringBuilderImpl implements StringBuilderInterface {
   }
 
   @Override
+  public StringBuilderInterface append(Object obj) {
+    append(String.valueOf(obj));
+    return this;
+  }
+
+  @Override
+  public StringBuilderInterface append(StringBuffer sb) {
+    append(sb.toString());
+    return this;
+  }
+
+  @Override
+  public StringBuilderInterface append(char[] str) {
+    if (isFill() || capacity - size < str.length) {
+      createNewBytes(
+        getNeededCapacity(str.length));
+    }
+    if (isNotNull(str.length > 0)) {
+      for (char value : str) {
+        bytes[size] = (byte) value;
+        size++;
+      }
+      addChanges();
+    }
+    return this;
+  }
+
+  @Override
+  public StringBuilderInterface append(char[] str, int offset, int len) {
+    if (str.length > 0) {
+      if (isFill() || capacity - size < str.length) {
+        createNewBytes(
+          getNeededCapacity(str.length));
+      }
+      for (int index = offset; len > 0; index++) {
+        bytes[size] = (byte) str[index];
+        size++;
+        len--;
+      }
+      addChanges();
+    }
+    return this;
+  }
+
+  @Override
+  public StringBuilderInterface append(long number) {
+    if (isFill()) {
+      createNewBytes(
+        getNeededCapacity(Long.toString(number)));
+    }
+    if (isNotNull(number)) {
+      EntryNumber entryNumber = new EntryNumber(TypeNumber.Long, EntryNumber.getArrayNumber(number));
+
+      mapNumber.put(entryNumber.key, entryNumber);
+      bytes[size] = entryNumber.key.byteValue();
+
+      size++;
+      addChanges();
+    }
+    return this;
+  }
+
+  @Override
+  public StringBuilderInterface append(float number) {
+    if (isFill() || capacity - size < Float.toString(number).length()) {
+      createNewBytes(
+        getNeededCapacity(Float.toString(number)));
+    }
+    if (isNotNull(number)) {
+      EntryNumber entryNumber = new EntryNumber(TypeNumber.Float, EntryNumber.getArrayNumber(number));
+
+      mapNumber.put(entryNumber.key, entryNumber);
+      bytes[size] = entryNumber.key.byteValue();
+
+      size++;
+      addChanges();
+    }
+    return this;
+  }
+
+  @Override
+  public void setLength(int newLength) {
+    if (newLength < 0) {
+      throw new StringIndexOutOfBoundsException();
+    }
+    if (capacity - size < newLength) {
+      createNewBytes(
+        getNeededCapacity(newLength));
+    }
+    bytes = Arrays.copyOf(bytes, size = newLength);
+  }
+
+  @Override
   public void undo() {
     if (changes.isEmpty())
-      throw new NoSuchElementException("no element to undo");
+      throw new NoSuchElementException();
     if (!Arrays.equals(changes.getFirst(), changes.getLast())) {
       changes.removeLast();
     }
+
     byte[] poolChanges = changes.removeLast();
     bytes = new byte[poolChanges.length];
     size = poolChanges.length;
@@ -168,14 +283,43 @@ public class StringBuilderImpl implements StringBuilderInterface {
   }
 
   @Override
-  public void setLength(int newLength) {
-    size = newLength;
+  public IntStream chars() {
+    return this.toString().chars();
+  }
+
+  @Override
+  public IntStream codePoints() {
+    return this.toString().codePoints();
+  }
+
+  @Override
+  public StringBuilderInterface appendCodePoint(int codePoint) {
+    append((char) codePoint);
+    return this;
+  }
+
+  @Override
+  public StringBuilderInterface reverse() {
+    Stack<Byte> chars = new Stack<>();
+    for (int i = 0; i < size; i++) {
+      chars.push(bytes[i]);
+    }
+    int index = 0;
+    while (!chars.isEmpty()) {
+      bytes[index] = chars.pop();
+      index++;
+    }
+    return this;
   }
 
   @Override
   public int codePointAt(int index) {
     if (index > bytes.length || index < 0) {
       throw new IndexOutOfBoundsException();
+    }
+    if(bytes[index] < 0){
+      mapNumber.get((int) bytes[index]);
+
     }
     return 0;
   }
@@ -197,86 +341,10 @@ public class StringBuilderImpl implements StringBuilderInterface {
 
   @Override
   public void getChars(int srcBegin, int srcEnd, char[] dst, int dstBegin) {
-
   }
 
   @Override
   public void setCharAt(int index, char ch) {
-
-  }
-
-  @Override
-  public StringBuilderInterface append(Object obj) {
-    return null;
-  }
-
-  @Override
-  public StringBuilderInterface append(StringBuffer sb) {
-    return null;
-  }
-
-  @Override
-  public StringBuilderInterface append(char[] str) {
-    if (isFill() || capacity - size < str.length) {
-      createNewBytes(
-        getNeededCapacity(str.length));
-    }
-    if (isNotNull(str.length > 0)) {
-      for (char value : str) {
-        bytes[size] = (byte) value;
-        size++;
-      }
-      addChanges();
-    }
-    return this;
-  }
-
-  @Override
-  public StringBuilderInterface append(char[] str, int offset, int len) {
-    if(str.length > 0) {
-      if (isFill() || capacity - size < str.length) {
-        createNewBytes(
-          getNeededCapacity(str.length));
-      }
-      for(int index = offset; index < len; index++){
-        bytes[size] = (byte) str[index];
-        size++;
-      }
-      addChanges();
-    }
-    return this;
-  }
-
-  @Override
-  public StringBuilderInterface append(long l) {
-    if (isFill() || capacity - size < Long.toString(l).length()) {
-      createNewBytes(
-        getNeededCapacity(Long.toString(l)));
-    }
-    if (isNotNull(l)) {
-      byte[] numberArray = ByteBuffer.allocate(Long.BYTES).putLong(l).array();
-      bytes[size] = -3;
-      size++;
-      for (int i = 0; i < numberArray.length; i++) {
-        if (isFill()) {
-          createNewBytes(getNeededCapacity(Long.toString(l)));
-        }
-        bytes[size] = numberArray[i];
-        size++;
-      }
-      if (isFill()) {
-        createNewBytes(getNeededCapacity(Long.toString(l)));
-      }
-      bytes[size] = -3;
-      size++;
-    }
-    addChanges();
-    return this;
-  }
-
-  @Override
-  public StringBuilderInterface append(float f) {
-    return null;
   }
 
   @Override
@@ -284,11 +352,6 @@ public class StringBuilderImpl implements StringBuilderInterface {
     return null;
   }
 
-  @Override
-  public StringBuilderInterface appendCodePoint(int codePoint) {
-    append((char) codePoint);
-    return this;
-  }
 
   @Override
   public StringBuilderInterface deleteCharAt(int index) {
@@ -305,50 +368,9 @@ public class StringBuilderImpl implements StringBuilderInterface {
     return "";
   }
 
-  private int getNeededCapacity(String string) {
-    if (capacity - size < string.length()) {
-      return capacity += string.length();
-    }
-    return capacity += DEFAULT_CAPACITY_FOR_BYTES;
-  }
-
-  private int getNeededCapacity(int length) {
-    if (capacity - size < length) {
-      return capacity += length;
-    }
-    return capacity += DEFAULT_CAPACITY_FOR_BYTES;
-  }
-
-  private boolean isFill() {
-    return size == capacity;
-  }
-
-  private void createNewBytes(int neededCapacity) {
-    byte[] oldBytes = bytes;
-    bytes = new byte[neededCapacity];
-    copyArray(oldBytes, 0, bytes, 0, size);
-  }
-
-  private void createNewBytes(int neededCapacity, String string) {
-    byte[] stringBytes = string.getBytes();
-    bytes = new byte[neededCapacity];
-    size = string.length();
-    copyArray(stringBytes, 0, bytes, 0, size);
-  }
-
-  private void copyArray(byte[] src, int srcPoc, Object dest, int destPos, int length) {
-    System.arraycopy(src, srcPoc, dest, destPos, length);
-  }
-
-  private <T> boolean isNotNull(T s) {
-    if (s == null)
-      return false;
-    else return !s.toString().isBlank();
-  }
-
   @Override
   public int length() {
-    return 0;
+    return size;
   }
 
   @Override
@@ -358,7 +380,7 @@ public class StringBuilderImpl implements StringBuilderInterface {
 
   @Override
   public boolean isEmpty() {
-    return StringBuilderInterface.super.isEmpty();
+    return size == 0;
   }
 
   @Override
@@ -431,7 +453,6 @@ public class StringBuilderImpl implements StringBuilderInterface {
     return null;
   }
 
-
   @Override
   public int indexOf(String str) {
     return 0;
@@ -453,60 +474,73 @@ public class StringBuilderImpl implements StringBuilderInterface {
   }
 
   @Override
-  public StringBuilderInterface reverse() {
-    return this;
-  }
-
-  @Override
   public String toString() {
     StringBuffer buffer = new StringBuffer();
 
     for (int i = 0; i < size; i++) {
 
-      if (bytes[i] == -1) {
-        i = getNumber(buffer, i + 1, -1, 4, Integer.class.getSimpleName());
-      } else if (bytes[i] == -2) {
-        i = getNumber(buffer, i + 1, -2, 8, Double.class.getSimpleName());
-      } else if (bytes[i] == -3) {
-        i = getNumber(buffer, i + 1, -3, 8, Long.class.getSimpleName());
+      if (bytes[i] < 0) {
+        EntryNumber number = mapNumber.get((int) bytes[i]);
+        getNumber(number, buffer);
       } else
         buffer.append((char) bytes[i]);
+
     }
     return buffer.toString();
-
   }
 
-  @Override
-  public IntStream chars() {
-    return StringBuilderInterface.super.chars();
-  }
-
-  @Override
-  public IntStream codePoints() {
-    return StringBuilderInterface.super.codePoints();
-  }
-
-  private <T> int getNumber(StringBuffer buffer, int iBytes, int numberEnd, int capacity, String name) {
-    int iInt = 0;
-    byte[] array = new byte[capacity];
-
-    while (bytes[iBytes] != numberEnd) {
-      array[iInt] = bytes[iBytes];
-      iBytes++;
-      iInt++;
+  private int getNeededCapacity(String string) {
+    if (capacity - size < string.length()) {
+      return capacity += string.length();
     }
+    return capacity += DEFAULT_CAPACITY_FOR_BYTES;
+  }
 
-    if (Objects.equals(name, Double.class.getSimpleName()))
-      buffer.append(ByteBuffer.wrap(array).getDouble());
+  private int getNeededCapacity(int length) {
+    if (capacity - size < length) {
+      return capacity += length;
+    }
+    return capacity += DEFAULT_CAPACITY_FOR_BYTES;
+  }
 
-    if (Objects.equals(name, Integer.class.getSimpleName()))
-      buffer.append(ByteBuffer.wrap(array).getInt());
+  private boolean isFill() {
+    return size == capacity;
+  }
 
-    if (Objects.equals(name, Long.class.getSimpleName()))
-      buffer.append(ByteBuffer.wrap(array).getLong());
+  private void createNewBytes(int neededCapacity) {
+    byte[] oldBytes = bytes;
+    bytes = new byte[neededCapacity];
+    copyArray(oldBytes, 0, bytes, 0, size);
+  }
 
-    return iBytes;
+  private void createNewBytes(int neededCapacity, String string) {
+    byte[] stringBytes = string.getBytes();
+    bytes = new byte[neededCapacity];
+    size = string.length();
+    copyArray(stringBytes, 0, bytes, 0, size);
+  }
 
+  private void copyArray(byte[] src, int srcPoc, Object dest, int destPos, int length) {
+    System.arraycopy(src, srcPoc, dest, destPos, length);
+  }
+
+  private <T> boolean isNotNull(T s) {
+    if (s == null)
+      return false;
+    else return !s.toString().isBlank();
+  }
+
+  private void addChanges() {
+    changes.add(Arrays.copyOf(bytes, size));
+  }
+
+  private void getNumber(EntryNumber number, StringBuffer buffer) {
+    switch (number.type) {
+      case Long -> buffer.append(ByteBuffer.wrap(number.arrayByte).getLong());
+      case Double -> buffer.append(ByteBuffer.wrap(number.arrayByte).getDouble());
+      case Integer -> buffer.append(ByteBuffer.wrap(number.arrayByte).getInt());
+      case Float -> buffer.append(ByteBuffer.wrap(number.arrayByte).getFloat());
+    }
   }
 
   @Override
@@ -528,5 +562,6 @@ public class StringBuilderImpl implements StringBuilderInterface {
     result = 31 * result + Arrays.hashCode(bytes);
     return result;
   }
+
 
 }
