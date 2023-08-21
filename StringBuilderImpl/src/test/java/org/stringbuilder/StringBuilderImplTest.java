@@ -157,7 +157,7 @@ class StringBuilderImplTest {
   }
 
   @Test
-  void undo_ThrowNoSuchElementException_IfUndoValueIsNotExist() {
+  void undo_ThrowsNoSuchElementException_IfUndoValueIsNotExist() {
     builder.append(indexEnd);
     builder.undo();
 
@@ -175,7 +175,7 @@ class StringBuilderImplTest {
   }
 
   @Test
-  void codePointAt_ReturnsIntStream() {
+  void codePoints_ReturnsIntStream() {
     String str = "Sequence";
     builder.append(sequence, 4, 12);
     assertArrayEquals(str.codePoints().toArray(), builder.codePoints().toArray());
@@ -190,138 +190,198 @@ class StringBuilderImplTest {
   }
 
   @Test
-  void codePointCount() {
+  void codePointAt_ByIndex_ReturnsIntCodePointChar() {
+    builder.append(sequence);
+    int expected = Character.codePointAt("S", 0);
+    int action = builder.codePointAt(indexStart);
+    assertEquals(expected, action);
+  }
+
+  @Test
+  void codePointAt_ByIndex_ReturnsIntCodePointNumber() {
+    CharSequence number = "100";
+    builder.append(number);
+    assertEquals(Character.codePointAt(number, 0), builder.codePointAt(0));
+  }
+
+  @Test
+  void codePointCount_ByIndex_ThrowsIndexOutOfBoundsException_IfIndexIsOutOfBounds() {
+    builder.append(sequence);
+    assertThrows(IndexOutOfBoundsException.class, () ->  builder.codePointAt(-1));
+  }
+
+  @Test
+  void charAt_ByIndex_ReturnsCharByIndex() {
+    builder.append(926439);
+    CharSequence seq = "926439";
+    char expected = seq.charAt(3);
+    assertEquals(expected, builder.charAt(3));
+  }
+
+  @Test
+  void charAt_ByIndex_ThrowsIndexOutOfBoundsException_IfIndexIsOutOfBounds() {
+    builder.append(926439);
+    assertThrows(IndexOutOfBoundsException.class, () -> builder.charAt(20));
   }
 
   @Test
   void offsetByCodePoints() {
+    fail();
   }
 
   @Test
   void getChars() {
+    fail();
   }
 
   @Test
   void setCharAt() {
+    fail();
   }
 
   @Test
   void delete() {
+    fail();
   }
 
-  @Test
-  void appendCodePoint() {
-  }
 
   @Test
   void deleteCharAt() {
+    fail();
   }
 
   @Test
   void replace() {
+    fail();
   }
 
   @Test
   void substring() {
+    fail();
   }
 
   @Test
   void length() {
+    fail();
   }
 
   @Test
   void charAt() {
+    fail();
   }
 
   @Test
   void isEmpty() {
+    fail();
   }
 
   @Test
   void subSequence() {
+    fail();
   }
 
   @Test
   void testSubstring() {
+    fail();
   }
 
   @Test
   void insert() {
+    fail();
   }
 
   @Test
   void testInsert() {
+    fail();
   }
 
   @Test
   void testInsert1() {
+    fail();
   }
 
   @Test
   void testInsert2() {
+    fail();
   }
 
   @Test
   void testInsert3() {
+    fail();
   }
 
   @Test
   void testInsert4() {
+    fail();
   }
 
   @Test
   void testInsert5() {
+    fail();
   }
 
   @Test
   void testInsert6() {
+    fail();
   }
 
   @Test
   void testInsert7() {
+    fail();
   }
 
   @Test
   void testInsert8() {
+    fail();
   }
 
   @Test
   void testInsert9() {
+    fail();
   }
 
   @Test
   void testInsert10() {
+    fail();
   }
 
   @Test
   void indexOf() {
+    fail();
   }
 
   @Test
   void testIndexOf() {
+    fail();
   }
 
   @Test
   void lastIndexOf() {
+    fail();
   }
 
   @Test
   void testLastIndexOf() {
+    fail();
   }
 
   @Test
   void reverse() {
+    fail();
   }
 
   @Test
   void testToString() {
+    fail();
   }
 
   @Test
   void chars() {
+    fail();
   }
 
   @Test
   void codePoints() {
+    fail();
   }
 }
