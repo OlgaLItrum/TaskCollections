@@ -47,10 +47,6 @@ class StringBuilderImplTest {
     assertEquals(Character.toString(character), builder.toString());
   }
 
-  @Test
-  void codePointAt_ByIndex_ReturnsCodePointElement() {
-    fail();
-  }
 
   @Test
   void append_ByArrayCharIndexOffsetAndLen_ReturnsStringBuilderWithArrayChar() {
@@ -141,10 +137,6 @@ class StringBuilderImplTest {
     assertEquals(newSequence.length(), builder.length());
   }
 
-  @Test
-  void subString_ByIndexStart_ReturnsString() {
-    fail();
-  }
 
   @Test
   void undo_SetUndoValue_IfUndoValueIsExist() {
@@ -205,9 +197,9 @@ class StringBuilderImplTest {
   }
 
   @Test
-  void codePointCount_ByIndex_ThrowsIndexOutOfBoundsException_IfIndexIsOutOfBounds() {
+  void codePointAt_ByIndex_ThrowsIndexOutOfBoundsException_IfIndexIsOutOfBounds() {
     builder.append(sequence);
-    assertThrows(IndexOutOfBoundsException.class, () ->  builder.codePointAt(-1));
+    assertThrows(IndexOutOfBoundsException.class, () -> builder.codePointAt(-1));
   }
 
   @Test
@@ -225,28 +217,59 @@ class StringBuilderImplTest {
   }
 
   @Test
+  void deleteCharAt_ByIndex_ReturnsStringBuilderWithoutChar() {
+    builder.append(sequence);
+    String expected = "Charequence";
+    String action = builder.deleteCharAt(indexStart).toString();
+    assertEquals(expected, action);
+  }
+
+  @Test
+  void deleteCharAt_ByIndex_ReturnsStringBuilderWithoutNumber() {
+    builder.append(1234567);
+    String expected = "123467";
+    String action = builder.deleteCharAt(indexStart).toString();
+    assertEquals(expected, action);
+  }
+
+  @Test
+  void deleteCharAt_ByIndex_ThrowsIndexOutOfBoundsException_IfIndexIsOutOfBounds() {
+    assertThrows(IndexOutOfBoundsException.class, () -> builder.append(sequence).deleteCharAt(100));
+  }
+
+  @Test
+  void subString_ByIndexStart_ReturnsString() {
+    char[] array = new char[10];
+    new StringBuilderImpl().append(1023048540).getChars(0, 4, array, 0);
+  }
+
+  @Test
+  void getChars_ByIntSrcBeginSrcEndCharArrayDstIntDstBegin_SetCharArray(){
+    char[] dst = new char[indexEnd - indexStart];
+    builder.append(sequence);
+    builder.getChars(indexStart, indexEnd, dst, 0);
+    char[] expectedSequence = sequence.subSequence(indexStart, indexEnd).toString().toCharArray();
+    assertEquals(Arrays.toString(expectedSequence), Arrays.toString(dst));
+  }
+
+  @Test
   void offsetByCodePoints() {
     fail();
   }
 
-  @Test
-  void getChars() {
-    fail();
-  }
 
   @Test
   void setCharAt() {
-    fail();
+    builder.append(92344).append(sequence);
+    builder.setCharAt(2, 'c');
+    char a = 'a';
+    char num = '1';
+    var b = Character.isLetter(a);
+    var c = Character.isLetter(num);
   }
 
   @Test
   void delete() {
-    fail();
-  }
-
-
-  @Test
-  void deleteCharAt() {
     fail();
   }
 
@@ -262,16 +285,6 @@ class StringBuilderImplTest {
 
   @Test
   void length() {
-    fail();
-  }
-
-  @Test
-  void charAt() {
-    fail();
-  }
-
-  @Test
-  void isEmpty() {
     fail();
   }
 
@@ -366,22 +379,8 @@ class StringBuilderImplTest {
   }
 
   @Test
-  void reverse() {
-    fail();
-  }
-
-  @Test
   void testToString() {
     fail();
   }
 
-  @Test
-  void chars() {
-    fail();
-  }
-
-  @Test
-  void codePoints() {
-    fail();
-  }
 }

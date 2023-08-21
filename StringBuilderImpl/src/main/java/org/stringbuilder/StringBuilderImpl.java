@@ -3,6 +3,7 @@ package org.stringbuilder;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public class StringBuilderImpl implements StringBuilderInterface {
   private static final int DEFAULT_CAPACITY_FOR_BYTES = 10;
@@ -10,7 +11,7 @@ public class StringBuilderImpl implements StringBuilderInterface {
 
   private final ArrayDeque<byte[]> changes;
 
-  private HashMap<Integer, EntryNumber> mapNumber;
+  private final HashMap<Integer, EntryNumber> mapNumber;
   private byte[] bytes;
 
   private int capacity;
@@ -35,6 +36,57 @@ public class StringBuilderImpl implements StringBuilderInterface {
   public StringBuilderImpl(String string) {
     createNewBytes(getNeededCapacity(string), string);
     addChanges();
+  }
+
+  private enum TypeNumber {
+    Double(java.lang.Double.class),
+    Long(java.lang.Long.class),
+    Integer(java.lang.Integer.class),
+    Float(java.lang.Float.class);
+
+    private final Class clazz;
+
+    <T> TypeNumber(Class<T> clazz) {
+      this.clazz = clazz;
+    }
+  }
+
+  private static class EntryNumber {
+    private Integer key = 0;
+    private final TypeNumber type;
+    private byte[] arrayByte;
+
+    {
+      --key;
+    }
+
+    private EntryNumber(TypeNumber type, byte[] arrayNumber) {
+      this.type = type;
+      this.arrayByte = arrayNumber;
+    }
+
+    private static <T> byte[] getArrayNumber(Number number, Class<T> type) {
+      if (type.isAssignableFrom(Integer.class)) {
+        return ByteBuffer.allocate(Integer.BYTES).putInt((int) number).array();
+      }
+
+      if (type.isAssignableFrom(Double.class)) {
+        return ByteBuffer.allocate(Double.BYTES).putDouble((double) number).array();
+      }
+
+      if (type.isAssignableFrom(Long.class)) {
+        return ByteBuffer.allocate(Long.BYTES).putLong((long) number).array();
+      }
+
+      if (type.isAssignableFrom(Float.class)) {
+        return ByteBuffer.allocate(Float.BYTES).putFloat((float) number).array();
+      }
+      return null;
+    }
+
+    private static boolean isNumber(byte num) {
+      return (num == 0) || (num < 0);
+    }
   }
 
   @Override
@@ -79,58 +131,14 @@ public class StringBuilderImpl implements StringBuilderInterface {
     return this;
   }
 
-  enum TypeNumber {
-    Double, Long, Integer, Float
-  }
-
-  class EntryNumber {
-    Integer key = 0;
-    TypeNumber type;
-    byte[] arrayByte;
-
-    {
-      --key;
-    }
-
-    EntryNumber(TypeNumber type, byte[] arrayNumber) {
-      this.type = type;
-      this.arrayByte = arrayNumber;
-    }
-
-    static byte[] getArrayNumber(int number) {
-      return ByteBuffer.allocate(Integer.BYTES).putInt(number).array();
-    }
-
-    static byte[] getArrayNumber(double number) {
-      return ByteBuffer.allocate(Double.BYTES).putDouble(number).array();
-    }
-
-    static byte[] getArrayNumber(long number) {
-      return ByteBuffer.allocate(Long.BYTES).putLong(number).array();
-    }
-
-    static byte[] getArrayNumber(float number) {
-      return ByteBuffer.allocate(Float.BYTES).putFloat(number).array();
-    }
-  }
-
   public StringBuilderImpl append(int number) {
     if (isFill() || capacity >= size + 2 + Integer.toString(number).length()) {
       createNewBytes(
         getNeededCapacity(Integer.toString(number)));
     }
     if (isNotNull(number)) {
-      EntryNumber entryNumber = new EntryNumber(TypeNumber.Integer, EntryNumber.getArrayNumber(number));
-      mapNumber.put(entryNumber.key, entryNumber);
-
-      bytes[size] = entryNumber.key.byteValue();
-      size++;
-
-      for (int i = size; i < Float.toString(number).length(); i++) {
-        bytes[i] = 0;
-        size++;
-      }
-      size++;
+      EntryNumber entryNumber = new EntryNumber(TypeNumber.Integer, EntryNumber.getArrayNumber(number, Integer.class));
+      addNumber(entryNumber, number);
       addChanges();
     }
     return this;
@@ -142,11 +150,9 @@ public class StringBuilderImpl implements StringBuilderInterface {
         getNeededCapacity(Double.toString(number)));
     }
     if (isNotNull(number)) {
-      EntryNumber entryNumber = new EntryNumber(TypeNumber.Double, EntryNumber.getArrayNumber(number));
-      mapNumber.put(entryNumber.key, entryNumber);
+      EntryNumber entryNumber = new EntryNumber(TypeNumber.Double, EntryNumber.getArrayNumber(number, Double.class));
 
-      bytes[size] = entryNumber.key.byteValue();
-      size++;
+      addNumber(entryNumber, number);
 
       addChanges();
     }
@@ -220,12 +226,10 @@ public class StringBuilderImpl implements StringBuilderInterface {
         getNeededCapacity(Long.toString(number)));
     }
     if (isNotNull(number)) {
-      EntryNumber entryNumber = new EntryNumber(TypeNumber.Long, EntryNumber.getArrayNumber(number));
+      EntryNumber entryNumber = new EntryNumber(TypeNumber.Long, EntryNumber.getArrayNumber(number, Long.class));
 
-      mapNumber.put(entryNumber.key, entryNumber);
-      bytes[size] = entryNumber.key.byteValue();
+      addNumber(entryNumber, number);
 
-      size++;
       addChanges();
     }
     return this;
@@ -238,16 +242,9 @@ public class StringBuilderImpl implements StringBuilderInterface {
         getNeededCapacity(Float.toString(number)));
     }
     if (isNotNull(number)) {
-      EntryNumber entryNumber = new EntryNumber(TypeNumber.Float, EntryNumber.getArrayNumber(number));
+      EntryNumber entryNumber = new EntryNumber(TypeNumber.Float, EntryNumber.getArrayNumber(number, Float.class));
 
-      mapNumber.put(entryNumber.key, entryNumber);
-      bytes[size] = entryNumber.key.byteValue();
-      size++;
-      for (int i = 0; i < Float.toString(number).length(); i++) {
-        bytes[i] = 0;
-        size++;
-      }
-      size++;
+      addNumber(entryNumber, number);
       addChanges();
     }
     return this;
@@ -323,99 +320,37 @@ public class StringBuilderImpl implements StringBuilderInterface {
 
   @Override
   public int codePointAt(int index) {
-    if (index > bytes.length || index < 0) {
-      throw new IndexOutOfBoundsException();
-    }
-    if (bytes[index] < 0) {
-      EntryNumber number = mapNumber.get((int) bytes[index]);
-      return Character.codePointAt(getNumber(number).toString(), 0);
-    }
-    return bytes[index];
+    checkIndexOutOfBound(index);
+    return this.toString().codePointAt(index);
   }
 
   @Override
-  public int codePointBefore(int index) {
-    return 0;
+  public char charAt(int index) {
+    checkIndexOutOfBound(index);
+    return this.toString().charAt(index);
   }
 
   @Override
-  public int codePointCount(int beginIndex, int endIndex) {
-    return 0;
+  public boolean isEmpty() {
+    return size == 0;
   }
-
-  @Override
-  public int offsetByCodePoints(int index, int codePointOffset) {
-    return 0;
-  }
-
-  @Override
-  public void getChars(int srcBegin, int srcEnd, char[] dst, int dstBegin) {
-  }
-
-  @Override
-  public void setCharAt(int index, char ch) {
-  }
-
-  @Override
-  public StringBuilderInterface delete(int start, int end) {
-    return null;
-  }
-
 
   @Override
   public StringBuilderInterface deleteCharAt(int index) {
-    byte charOrNumber = bytes[index];
-    boolean isStartOfNumber = charOrNumber < 0;
+    checkIndexOutOfBound(index);
 
-    if(isStartOfNumber){
-      EntryNumber number = mapNumber.get((int) bytes[index]);
-      var num = Integer.parseInt(getNumber(number).toString().substring(index + 1));
-      number.arrayByte = EntryNumber.getArrayNumber(num);
-      mapNumber.put(number.key, number);
-    }
-    else {
-      int startIndex = getStartIndexOfNumber(index);
-      EntryNumber number = mapNumber.get((int) bytes[startIndex]);
+    if (EntryNumber.isNumber(bytes[index])) {
+      deleteNumberAt(index);
+    } else
+      copyArray(bytes, index + 1, bytes, index, size - 1);
 
-      var num = getNumber(number).toString().substring(startIndex, startIndex + (index - startIndex));
-
-      if(index - startIndex != number.arrayByte.length - 1){
-//       var a = getNumber(number).toString().substring();
-      }
-    }
+    size--;
+    addChanges();
+    trimToSize();
 
     return this;
   }
 
-  private Number checkAndGetNumber(int index){
-    byte charOrNumber = bytes[index];
-    boolean isStartOfNumber = charOrNumber < 0;
-
-    if(isStartOfNumber){
-      EntryNumber number = mapNumber.get((int) bytes[index]);
-      return getNumber(number);
-    }  else {
-
-      int startIndex = getStartIndexOfNumber(index);
-
-      EntryNumber number = mapNumber.get((int) bytes[startIndex]);
-      return (int) getNumber(number).toString().charAt(index - startIndex);
-    }
-  }
-
-  private int getStartIndexOfNumber(int index){
-    int startIndexNumber = index;
-
-    while (bytes[startIndexNumber] == 0) {
-      startIndexNumber--;
-    }
-
-    return startIndexNumber;
-  }
-  private void checkIndexOutOfBound(int index){
-    if (index > bytes.length || index < 0)
-      throw new IndexOutOfBoundsException();
-  }
   @Override
   public StringBuilderInterface replace(int start, int end, String str) {
     return null;
@@ -423,7 +358,21 @@ public class StringBuilderImpl implements StringBuilderInterface {
 
   @Override
   public String substring(int start) {
-    return "";
+    return toString().substring(start);
+  }
+
+  @Override
+  public CharSequence subSequence(int start, int end) {
+    checkIndexOutOfBound(start);
+    checkIndexOutOfBound(end);
+    return toString().subSequence(start, end);
+  }
+
+  @Override
+  public String substring(int start, int end) {
+    checkIndexOutOfBound(start);
+    checkIndexOutOfBound(end);
+    return toString().substring(start, end);
   }
 
   @Override
@@ -432,42 +381,104 @@ public class StringBuilderImpl implements StringBuilderInterface {
   }
 
   @Override
-  public char charAt(int index) {
-    if (index > bytes.length || index < 0) {
-      throw new IndexOutOfBoundsException();
-    }
-    byte charOrNumber = bytes[index];
+  public int codePointBefore(int index) {
+    checkIndexOutOfBound(index);
+    return this.toString().codePointBefore(index);
+  }
 
-    if (charOrNumber < 0) {
-      EntryNumber number = mapNumber.get((int) bytes[index]);
-      return getNumber(number).toString().charAt(0);
-    }
-    if (charOrNumber == 0) {
-      int startIndexNumber = index;
-      while (bytes[startIndexNumber] == 0) {
-        startIndexNumber--;
+  @Override
+  public int codePointCount(int beginIndex, int endIndex) {
+    checkIndexOutOfBound(beginIndex);
+    checkIndexOutOfBound(endIndex);
+    return toString().codePointCount(beginIndex, endIndex);
+  }
+
+  @Override
+  public int offsetByCodePoints(int index, int codePointOffset) {
+    checkIndexOutOfBound(index);
+    return toString().offsetByCodePoints(index, codePointOffset);
+  }
+
+  @Override
+  public void getChars(int srcBegin, int srcEnd, char[] dst, int dstBegin) {
+    checkIndexOutOfBound(srcBegin);
+    checkIndexOutOfBound(srcEnd);
+
+    System.arraycopy(toString().toCharArray(), srcBegin, dst, dstBegin, srcEnd - srcBegin);
+  }
+
+  @Override
+  public void setCharAt(int index, char ch) {
+    checkIndexOutOfBound(index);
+
+    byte num = bytes[index];
+    boolean isBeginOfNumber = num < 0;
+    boolean isNotBeginOfNumber = num == 0;
+
+    if (EntryNumber.isNumber(num)) {
+      if (isBeginOfNumber) {
+
+        EntryNumber entryNumber = mapNumber.get((int) num);
+        String oldNumber = getNumber(entryNumber).toString();
+
+        if (!Character.isLetter(ch)) {
+          char oldNumFirst = oldNumber.charAt(0);
+
+          String newNumberString = oldNumber.replace(oldNumFirst, ch);
+          Number newNumber = createNewNumber(newNumberString, entryNumber.type.clazz);
+          entryNumber.arrayByte = EntryNumber.getArrayNumber(newNumber, entryNumber.type.clazz);
+
+          mapNumber.put(entryNumber.key, entryNumber);
+        } else {
+          byte[] newBytes = bytes;
+          newBytes[index] = (byte) ch;
+
+          if (isFill() || size + 2 == capacity)
+            createNewBytes(
+              getNeededCapacity(1));
+
+          copyArray(newBytes, index, bytes, index + 1, newBytes.length);
+          bytes[index + 1] = entryNumber.key.byteValue();
+          deleteCharAt(index + 1);
+        }
+      } else if (isNotBeginOfNumber) {
+        int startIndexForNumber = getStartIndexOfNumber(index);
+        EntryNumber number = mapNumber.get((int) bytes[startIndexForNumber]);
+
+        if (Character.isLetter(ch)) {
+          String newNumberBeginString = createNewStringNumber(number, index, startIndexForNumber)
+            .substring(startIndexForNumber, index - startIndexForNumber);
+
+          String newNumberEndString = createNewStringNumber(number, index, startIndexForNumber)
+            .substring(index - startIndexForNumber);
+
+          Number newNumberFirst = createNewNumber(newNumberBeginString, number.type.clazz);
+          Number newNumberSecond = createNewNumber(newNumberEndString, number.type.clazz);
+
+          number.arrayByte = EntryNumber.getArrayNumber(newNumberFirst, number.type.clazz);
+
+          byte[] arrayByteForSecondNumber = EntryNumber.getArrayNumber(newNumberSecond, number.type.clazz);
+          EntryNumber secondNumber = new EntryNumber(number.type, arrayByteForSecondNumber);
+
+          mapNumber.put(number.key, number);
+          mapNumber.put(secondNumber.key, secondNumber);
+
+          int indexForChar = index + newNumberFirst.toString().length();
+          bytes[indexForChar] = (byte) ch;
+          bytes[indexForChar + 1] = secondNumber.key.byteValue();
+        }
+
       }
-      EntryNumber number = mapNumber.get((int) bytes[startIndexNumber]);
-        return getNumber(number).toString().charAt(index - startIndexNumber);
-    }
-    return (char) bytes[index];
-  }
+    } else
+      bytes[index] = (byte) ch;
 
-
-  @Override
-  public boolean isEmpty() {
-    return size == 0;
   }
 
   @Override
-  public CharSequence subSequence(int start, int end) {
+  public StringBuilderInterface delete(int start, int end) {
     return null;
   }
 
-  @Override
-  public String substring(int start, int end) {
-    return null;
-  }
 
   @Override
   public StringBuilderInterface insert(int index, char[] str, int offset, int len) {
@@ -531,22 +542,24 @@ public class StringBuilderImpl implements StringBuilderInterface {
 
   @Override
   public int indexOf(String str) {
-    return 0;
+    return toString().indexOf(str);
   }
 
   @Override
   public int indexOf(String str, int fromIndex) {
-    return 0;
+    checkIndexOutOfBound(fromIndex);
+    return toString().indexOf(str, fromIndex);
   }
 
   @Override
   public int lastIndexOf(String str) {
-    return 0;
+    return toString().lastIndexOf(str);
   }
 
   @Override
   public int lastIndexOf(String str, int fromIndex) {
-    return 0;
+    checkIndexOutOfBound(fromIndex);
+    return toString().lastIndexOf(str, fromIndex);
   }
 
   @Override
@@ -558,7 +571,8 @@ public class StringBuilderImpl implements StringBuilderInterface {
       if (bytes[i] < 0) {
         EntryNumber number = mapNumber.get((int) bytes[i]);
         buffer.append(getNumber(number));
-      } else
+      } else if (bytes[i] == 0) break;
+      else
         buffer.append((char) bytes[i]);
 
     }
@@ -610,6 +624,72 @@ public class StringBuilderImpl implements StringBuilderInterface {
     changes.add(Arrays.copyOf(bytes, size));
   }
 
+  private void deleteNumberAt(int index) {
+    byte num = bytes[index];
+
+    boolean isNotBeginOfNumber = num == 0;
+    boolean isBeginOfNumber = num < 0;
+
+    if (isNotBeginOfNumber) {
+      int startIndexForNumber = getStartIndexOfNumber(index);
+      EntryNumber number = mapNumber.get((int) bytes[startIndexForNumber]);
+      String newNumberString = createNewStringNumber(number, index, startIndexForNumber);
+      Number newNumber = createNewNumber(newNumberString, number.type.clazz);
+      number.arrayByte = EntryNumber.getArrayNumber(newNumber, number.type.clazz);
+      mapNumber.put(number.key, number);
+
+    } else if (isBeginOfNumber) {
+      EntryNumber number = mapNumber.get((int) bytes[index]);
+      String newNumberString = createNewStringNumber(number, index, index);
+      Number newNumber = createNewNumber(newNumberString, number.type.clazz);
+      number.arrayByte = EntryNumber.getArrayNumber(newNumber, number.type.clazz);
+      mapNumber.put(number.key, number);
+    }
+  }
+
+  private <T extends Number> T createNewNumber(String newNumberString, Class<T> type) {
+    if (type.isAssignableFrom(Integer.class)) {
+      return (T) (Integer) Integer.parseInt(newNumberString);
+    }
+    if (type.isAssignableFrom(Double.class)) {
+      return (T) (Double) Double.parseDouble(newNumberString);
+    }
+    if (type.isAssignableFrom(Long.class)) {
+      return (T) (Long) Long.parseLong(newNumberString);
+    }
+    if (type.isAssignableFrom(Float.class)) {
+      return (T) (Float) Float.parseFloat(newNumberString);
+    }
+
+    return null;
+  }
+
+  private String createNewStringNumber(EntryNumber number, int index, int startIndexForNumber) {
+    String numberString = getNumber(number).toString();
+    if (index > startIndexForNumber) {
+      String numberStringBegin = numberString.substring(0, index - startIndexForNumber);
+      String numberStringEnd = numberString.substring(index - startIndexForNumber + 1);
+      return numberStringBegin + numberStringEnd;
+    } else {
+      return numberString.substring((index - startIndexForNumber) + 1);
+    }
+  }
+
+  private int getStartIndexOfNumber(int index) {
+    int startIndexNumber = index;
+
+    while (bytes[startIndexNumber] == 0) {
+      startIndexNumber--;
+    }
+
+    return startIndexNumber;
+  }
+
+  private void checkIndexOutOfBound(int index) {
+    if (index > bytes.length || index < 0)
+      throw new IndexOutOfBoundsException();
+  }
+
   private Number getNumber(EntryNumber number) {
     return switch (number.type) {
       case Long -> ByteBuffer.wrap(number.arrayByte).getLong();
@@ -617,6 +697,18 @@ public class StringBuilderImpl implements StringBuilderInterface {
       case Integer -> ByteBuffer.wrap(number.arrayByte).getInt();
       case Float -> ByteBuffer.wrap(number.arrayByte).getFloat();
     };
+  }
+
+  private void addNumber(EntryNumber entryNumber, Number number) {
+    mapNumber.put(entryNumber.key, entryNumber);
+    bytes[size] = entryNumber.key.byteValue();
+    size++;
+
+    for (int i = size; i < String.valueOf(number).length(); i++) {
+      bytes[i] = 0;
+      size++;
+    }
+    size++;
   }
 
   @Override
@@ -638,6 +730,4 @@ public class StringBuilderImpl implements StringBuilderInterface {
     result = 31 * result + Arrays.hashCode(bytes);
     return result;
   }
-
-
 }
