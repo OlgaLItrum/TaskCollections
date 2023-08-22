@@ -122,8 +122,10 @@ class StringBuilderImplTest {
 
   @Test
   void append_ByFloat_ReturnsStringBuilderWithFloat() {
-    float number = 8.5F;
+    float number = 8.5f;
+    builder = new StringBuilderImpl();
     builder.append(number);
+    System.out.println(builder.toString());
     assertEquals(Float.toString(number), builder.toString());
   }
 
@@ -238,13 +240,15 @@ class StringBuilderImplTest {
   }
 
   @Test
-  void subString_ByIndexStart_ReturnsString() {
-    char[] array = new char[10];
+  void subString_byIndexStart_returnsString() {
+    char[] array = new char[4];
+    char[] expected = {'1', '0', '2', '3'};
     new StringBuilderImpl().append(1023048540).getChars(0, 4, array, 0);
+    assertEquals(Arrays.toString(expected), Arrays.toString(array));
   }
 
   @Test
-  void getChars_ByIntSrcBeginSrcEndCharArrayDstIntDstBegin_SetCharArray(){
+  void getChars_byIntSrcBeginSrcEndCharArrayDstIntDstBegin_setCharArray() {
     char[] dst = new char[indexEnd - indexStart];
     builder.append(sequence);
     builder.getChars(indexStart, indexEnd, dst, 0);
@@ -253,19 +257,93 @@ class StringBuilderImplTest {
   }
 
   @Test
-  void offsetByCodePoints() {
-    fail();
+  void setCharAt_ByIntIndexCharCh_setCharIfCharIsNotDigit() {
+    builder.append(92344).append(sequence);
+    builder.setCharAt(3, '.');
+    assertEquals("923.4CharSequence", builder.toString());
   }
 
+  @Test
+  void setCharAt_ByIntIndexCharCh_setCharIfCharIsDigit() {
+    builder.append(92344).append(sequence);
+    builder.setCharAt(1, '7');
+    assertEquals("97344CharSequence", builder.toString());
+  }
 
   @Test
-  void setCharAt() {
-    builder.append(92344).append(sequence);
-    builder.setCharAt(2, 'c');
-    char a = 'a';
-    char num = '1';
-    var b = Character.isLetter(a);
-    var c = Character.isLetter(num);
+  void setCharAt_ByIntIndexCharCh_ThrowsIndexOutOfBoundsException_IfIndexIsOutOfBounds() {
+    assertThrows(IndexOutOfBoundsException.class, () -> builder.append(sequence).setCharAt(100, 'c'));
+  }
+
+  @Test
+  void insert_ByIntOffsetAndStringStr_ReturnsStringBuilderWithString() {
+    builder.append(10.5).append(sequence).append(10.2);
+    builder.insert(1, "100");
+    assertEquals("10.5100CharSequence10.2", builder.toString());
+  }
+
+  @Test
+  void insert_ByIntOffsetAndArrayCharStr_ReturnsStringBuilderWithArrayChar() {
+    char[] expected = {'1', '0', '2', '3'};
+    builder.append(sequence);
+    builder.insert(1, expected);
+    assertEquals("C1023harSequence", builder.toString());
+  }
+
+  @Test
+  void insert_ByDstOffsetAndCharSequenceS_ReturnsStringBuilderWithCharSequence() {
+    builder.append(sequence);
+    builder.insert(6, sequence);
+    assertEquals("CharSeCharSequencequence", builder.toString());
+  }
+
+  @Test
+  void insert_ByDstOffsetAndCharSequenceSIntStartIntEnd_ReturnsStringBuilderWithSubCharSequence() {
+    builder.append(sequence);
+    builder.insert(6, sequence, indexStart, indexEnd);
+    assertEquals("CharSeSeququence", builder.toString());
+  }
+
+  @Test
+  void insert_ByOffsetAndObjectObj_ReturnsStringBuilderWithString() {
+    builder.append(sequence);
+    builder.insert(6, sequence, indexStart, indexEnd);
+    assertEquals("CharSeSeququence", builder.toString());
+  }
+
+  @Test
+  void insert_ByOffsetAndFloatF_ReturnsStringBuilderWithFloat() {
+    builder.append(sequence);
+    builder.insert(6, 7F);
+    assertEquals("CharSe7.0quence", builder.toString());
+  }
+
+  @Test
+  void insert_ByOffsetAndDoubleD_ReturnsStringBuilderWithDouble() {
+    builder.append(sequence);
+    builder.insert(indexStart, 9.0);
+    assertEquals("Char9.0Sequence", builder.toString());
+  }
+
+  @Test
+  void insert_ByOffsetAndLongL_ReturnsStringBuilderWithLong() {
+    builder.append(sequence);
+    builder.insert(indexStart, Long.MAX_VALUE);
+    assertEquals("Char9223372036854775807Sequence", builder.toString());
+  }
+
+  @Test
+  void insert_ByOffsetAndCharC_ReturnsStringBuilderWithChar() {
+    builder.append(sequence);
+    builder.insert(indexEnd, Character.MIN_LOW_SURROGATE);
+    assertEquals("CharSequ?ence", builder.toString());
+  }
+
+  @Test
+  void insert_ByOffsetAndBooleanB_ReturnsStringBuilderWithBoolean() {
+    builder.append(sequence);
+    builder.insert(indexEnd, Boolean.TRUE);
+    assertEquals("CharSequtrueence", builder.toString());
   }
 
   @Test
@@ -274,113 +352,8 @@ class StringBuilderImplTest {
   }
 
   @Test
-  void replace() {
-    fail();
+  void replace_ByIntStartIntEndStringStr_ReturnsStringBuilderWithString() {
+    builder.append(sequence).replace(indexStart, indexEnd, "charQwe");
+    assertEquals("CharcharQweence", builder.toString());
   }
-
-  @Test
-  void substring() {
-    fail();
-  }
-
-  @Test
-  void length() {
-    fail();
-  }
-
-  @Test
-  void subSequence() {
-    fail();
-  }
-
-  @Test
-  void testSubstring() {
-    fail();
-  }
-
-  @Test
-  void insert() {
-    fail();
-  }
-
-  @Test
-  void testInsert() {
-    fail();
-  }
-
-  @Test
-  void testInsert1() {
-    fail();
-  }
-
-  @Test
-  void testInsert2() {
-    fail();
-  }
-
-  @Test
-  void testInsert3() {
-    fail();
-  }
-
-  @Test
-  void testInsert4() {
-    fail();
-  }
-
-  @Test
-  void testInsert5() {
-    fail();
-  }
-
-  @Test
-  void testInsert6() {
-    fail();
-  }
-
-  @Test
-  void testInsert7() {
-    fail();
-  }
-
-  @Test
-  void testInsert8() {
-    fail();
-  }
-
-  @Test
-  void testInsert9() {
-    fail();
-  }
-
-  @Test
-  void testInsert10() {
-    fail();
-  }
-
-  @Test
-  void indexOf() {
-    fail();
-  }
-
-  @Test
-  void testIndexOf() {
-    fail();
-  }
-
-  @Test
-  void lastIndexOf() {
-    fail();
-  }
-
-  @Test
-  void testLastIndexOf() {
-    fail();
-  }
-
-  @Test
-  void testToString() {
-    fail();
-  }
-
 }
