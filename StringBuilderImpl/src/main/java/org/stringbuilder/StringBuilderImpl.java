@@ -315,6 +315,7 @@ public class StringBuilderImpl implements StringBuilderInterface {
   @Override
   public StringBuilderInterface appendCodePoint(int codePoint) {
     append((char) codePoint);
+    addChanges();
     return this;
   }
 
@@ -329,6 +330,7 @@ public class StringBuilderImpl implements StringBuilderInterface {
       bytes[index] = chars.pop();
       index++;
     }
+    addChanges();
     return this;
   }
 
@@ -362,13 +364,14 @@ public class StringBuilderImpl implements StringBuilderInterface {
     addChanges();
     trimToSize();
 
+    addChanges();
     return this;
   }
 
   @Override
   public StringBuilderInterface replace(int start, int end, String str) {
     int lengthString = str.length();
-    if (isFill() || capacity - size <= lengthString){
+    if (isFill() || capacity - size <= lengthString) {
       createNewBytes(getNeededCapacity(lengthString));
     }
 
@@ -377,12 +380,13 @@ public class StringBuilderImpl implements StringBuilderInterface {
       setCharAt(index, strArray[i]);
       i++;
     }
-    if(str.length() > end - start){
-      for(int i = end - start, index = end; i < strArray.length; i++){
+    if (str.length() > end - start) {
+      for (int i = end - start, index = end; i < strArray.length; i++) {
         insert(index, String.valueOf(strArray[i]));
         index++;
       }
     }
+    addChanges();
     return this;
   }
 
@@ -455,6 +459,7 @@ public class StringBuilderImpl implements StringBuilderInterface {
       }
     } else
       bytes[index] = (byte) ch;
+    addChanges();
   }
 
   private void setValueIfNotBeginOfNumber(int index, char ch) {
@@ -571,13 +576,27 @@ public class StringBuilderImpl implements StringBuilderInterface {
 
   @Override
   public StringBuilderInterface delete(int start, int end) {
-    return null;
+    String thisString = toString();
+    CharSequence subRemove = thisString.subSequence(start, end);
+    String newString = thisString.replace(subRemove, "");
+
+    bytes = new byte[newString.length()];
+    size = 0;
+    append(newString);
+    size = newString.length();
+
+    addChanges();
+    return this;
   }
 
 
   @Override
   public StringBuilderInterface insert(int index, char[] str, int offset, int len) {
-    return null;
+    char[] subArray = new char[len];
+    System.arraycopy(str, offset, subArray, 0, len);
+
+    insert(index, new String(subArray));
+    return this;
   }
 
   @Override
@@ -590,18 +609,17 @@ public class StringBuilderImpl implements StringBuilderInterface {
   public StringBuilderInterface insert(int offset, String str) {
     checkIndexOutOfBound(offset);
 
-    byte[] arrayBegin = Arrays.copyOfRange(bytes, 0, offset);
-    byte[] arrayMiddle = str.getBytes();
-    byte[] arrayEnd = Arrays.copyOfRange(bytes, offset, size);
-    byte[] newBytes = new byte[arrayEnd.length + arrayBegin.length + arrayMiddle.length];
+    String thisString = toString();
+    String thisStringBegin = thisString.substring(0, offset);
+    String thisStringEnd = thisString.substring(offset, thisString.length());
+    String newString = thisStringBegin + str + thisStringEnd;
 
-    copyArray(arrayBegin, 0, newBytes, 0, arrayBegin.length);
-    size = arrayBegin.length;
-    copyArray(arrayMiddle, 0, newBytes, size, arrayMiddle.length);
-    size += arrayMiddle.length;
-    copyArray(arrayEnd, 0, newBytes, size, arrayEnd.length);
-    size += arrayEnd.length;
-    bytes = newBytes;
+    bytes = new byte[newString.length()];
+    size = 0;
+    append(newString);
+    size = newString.length();
+
+    addChanges();
     return this;
   }
 

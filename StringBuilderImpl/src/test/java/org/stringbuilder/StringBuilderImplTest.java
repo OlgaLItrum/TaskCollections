@@ -125,7 +125,6 @@ class StringBuilderImplTest {
     float number = 8.5f;
     builder = new StringBuilderImpl();
     builder.append(number);
-    System.out.println(builder.toString());
     assertEquals(Float.toString(number), builder.toString());
   }
 
@@ -279,7 +278,7 @@ class StringBuilderImplTest {
   void insert_ByIntOffsetAndStringStr_ReturnsStringBuilderWithString() {
     builder.append(10.5).append(sequence).append(10.2);
     builder.insert(1, "100");
-    assertEquals("10.5100CharSequence10.2", builder.toString());
+    assertEquals("11000.5CharSequence10.2", builder.toString());
   }
 
   @Test
@@ -347,8 +346,18 @@ class StringBuilderImplTest {
   }
 
   @Test
-  void delete() {
-    fail();
+  void delete_ByIntStartIntEnd_ReturnsStringBuilder() {
+    builder.append(102003945);
+    String expected = "10205";
+    assertEquals(expected, builder.delete(indexStart, indexEnd).toString());
+  }
+
+  @Test
+  void insert_ByIntIndexCharArrayStrIntOffsetIntLen_ReturnsStringBuilderWithSubArrayChar() {
+    char[] arrayChar = {'1', '0', '2', '3'};
+    builder.append(sequence).insert(indexStart, arrayChar, 0, 2);
+    String expected = "Char10Sequence";
+    assertEquals(expected, builder.toString());
   }
 
   @Test
